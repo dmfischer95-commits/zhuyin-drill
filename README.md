@@ -1,5 +1,3 @@
-Zero-latency, vibe-coded PWA to master Taiwanese Bopomofo (Zhuyin). Built in &lt;48h with Gemini &amp; Claude. 🇹🇼⚡️
-
 # ⚡ Zhuyin Drill (Bopomofo)
 > **The Playstore was mid, so I vibe-coded a better solution.**
 
