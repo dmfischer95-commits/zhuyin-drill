@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zhuyin Drill v5</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #000; color: #fff; margin: 0; font-family: sans-serif; }
+        #root { height: 100vh; width: 100vw; }
+        .error-log { padding: 20px; color: #ff5555; background: #1a0000; border: 1px solid #440000; margin: 20px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="flex items-center justify-center h-screen text-zinc-500">
+            Lade frischen Code...
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        const rootDiv = document.getElementById('root');
+        
+        function renderError(title, err) {
+            rootDiv.innerHTML = `
+                <div class="error-log">
+                    <h1 style="font-size: 1.2rem; font-weight: bold; margin-bottom: 10px;">${title}</h1>
+                    <p>${err}</p>
+                </div>
+            `;
+        }
+
+        async function startApp() {
+            try {
+                // Der Trick: ?t=... zwingt den Browser, die Datei WIRKLICH neu zu laden (Kein Cache)
+                const res = await fetch('ZhuyinDrill_v5.jsx?t=' + Date.now());
+                if (!res.ok) throw new Error("Datei nicht gefunden.");
+                let code = await res.text();
+
+                // 1. Bruteforce Cleaning: Wir zerhacken die Strings direkt (100% verlässlich)
+                code = code.replace(/import\s+[\s\S]*?from\s+['"].*?['"];?/g, '');
+                code = code.split('export default function').join('function');
+                code = code.split('export default ').join('');
+                code = code.split('export const').join('const');
+                code = code.split('export let').join('let');
+                code = code.split('export function').join('function');
+
+                // 2. React Hooks injizieren
+                const hooks = "const { useState, useEffect, useRef, useCallback, useMemo } = React;\n";
+                const finalCode = hooks + code;
+
+                // 3. Babel Transformation
+                let transformedCode;
+                try {
+                    transformedCode = Babel.transform(finalCode, { 
+                        presets: ['react'],
+                        filename: 'ZhuyinDrill_v5.jsx' 
+                    }).code;
+                } catch (e) {
+                    renderError("Babel Syntax Fehler", e.message);
+                    return;
+                }
+
+                // 4. Script starten
+                const script = document.createElement('script');
+                script.text = transformedCode;
+                document.head.appendChild(script);
+
+                // 5. UI Rendern
+                setTimeout(() => {
+                    try {
+                        const root = ReactDOM.createRoot(rootDiv);
+                        const Target = window.App || (typeof App !== 'undefined' ? App : null);
+                        
+                        if (!Target) {
+                            renderError("Render Fehler", "App-Funktion nicht gefunden.");
+                            return;
+                        }
+                        
+                        root.render(React.createElement(Target));
+                    } catch (e) {
+                        renderError("Render Fehler", e.message);
+                    }
+                }, 100);
+
+            } catch (err) {
+                renderError("System Fehler", err.message);
+            }
+        }
+
+        startApp();
+    </script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker registriert'))
+        .catch(err => console.log('SW Registrierung fehlgeschlagen', err));
+    });
+  }
+</script>
+</body>
+</html>
